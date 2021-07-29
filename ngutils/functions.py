@@ -43,7 +43,10 @@ def view_types(data, dropna=True):
 
     df_output['(unique)'] = [data[c].astype(str).nunique(dropna) for c in data.columns]
     df_output.columns = [columns_exch.get(str(x), x) for x in df_output.columns]
-    display(df_output.head(60))
+    if '_Jupyter' in globals():
+        display(df_output.head(60))
+    else:
+        print(df_output.head(60))
     print("{} rows x {} columns".format(*data.shape))
 
 def phrase_build(number, noun_forms=None, prefix_forms=None, grouping_symbol='`'):
@@ -174,6 +177,7 @@ def read_urls_contents(urls_list, max_workers=10, session=None, parser=None, enc
                 else:
                     error_page_output.write(f'Download error:\n{url}|{exc}')
     buf.seek(0)
+    print("URLs list download:   100%")
     return buf
 
 
@@ -193,7 +197,7 @@ def accel_steps(max_degree=10):
 
     2021-07-29 (c) Nikolay Ganibaev
     """
-    for i in range(max_degree):
+    for i in range(int(max_degree)):
         for j in 1, 2, 5:
             yield j*10**i
 
