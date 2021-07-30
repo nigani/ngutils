@@ -69,7 +69,7 @@ def phrase_build(number, noun_forms=None, prefix_forms=None, grouping_symbol='`'
     noun_forms : list
         Declensions of noun
     prefix_forms : list
-        Declensions of prefix word
+        Declensions of prefix word, mute if False
     grouping_symbol : str
         Digit grouping symbol
 
@@ -84,6 +84,9 @@ def phrase_build(number, noun_forms=None, prefix_forms=None, grouping_symbol='`'
     >>> phrase_build(42)
     Опубликованы 42 новости
 
+    >>> phrase_build(15, ['сияющих звезд', 'сияющая звезда', 'сияющие звезды'], False)
+    15 сияющих звезд
+
     >>> phrase_build(31, ['китов', 'кит', 'кита'], ['Спасены', 'Спасен'])
     Спасен 31 кит
 
@@ -92,6 +95,8 @@ def phrase_build(number, noun_forms=None, prefix_forms=None, grouping_symbol='`'
 
     if prefix_forms is None:
         prefix_forms = ['Опубликованы', 'Опубликована']
+    elif prefix_forms == False:
+        prefix_forms = ['','']
 
     if noun_forms is None:
         noun_forms = ['новостей', 'новость', 'новости']

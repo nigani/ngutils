@@ -1,9 +1,10 @@
 import pathlib
+from ngutils import __version__ as ngutils_version
 from setuptools import setup, find_packages
 
 setup(
     name=find_packages()[0],
-    version='0.9.6',
+    version=ngutils_version,
     author='nigani',
     author_email='nigani@internet.ru',
     description='Some useful ETL, EDA & other features',
