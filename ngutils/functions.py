@@ -167,7 +167,7 @@ def read_urls_contents(urls_list, max_workers=10, session=None, parser=None, enc
         future_load_csv = {executor.submit(url_loader, url, session, timeout, encoding): url for url in urls_list}
         for i, future in enumerate(pool.as_completed(future_load_csv)):
             if not mute:
-                print(f"URLs list download: {PROGRESS_WHEEL[i%8]} {i/len(urls_list)*.994:.0%}",end='\r',flush=True)
+                print(f"URLs list download: {PROGRESS_WHEEL[i%8]} {i/len(urls_list)*.994:<50.0%}",end='\r',flush=True)
             url = future_load_csv[future]
             try:
                 buf.write(parser(future.result()))

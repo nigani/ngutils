@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name=find_packages()[0],
-    version='0.9.4',
+    version='0.9.5',
     author='nigani',
     author_email='nigani@internet.ru',
     description='Some useful ETL, EDA & other features',
