@@ -114,7 +114,7 @@ def phrase_build(number, noun_forms=None, prefix_forms=None, grouping_symbol='`'
 
 
 def read_urls_contents(urls_list, max_workers=10, session=None, parser=None, encoding=None, *, 
-    max_retries=None, timeout=None, error_page_output=None, mute=False):
+    max_retries=None, timeout=None, error_page_output=None, status_text=None, mute=False):
     """
     URLs list contents multithread loading to StringIO
 
@@ -136,6 +136,8 @@ def read_urls_contents(urls_list, max_workers=10, session=None, parser=None, enc
         How many seconds to wait server establish connection and send response. By default, timeout is not define.
     error_page_output : io.StringIO, optional
         StringIO output stream for all runtime errors. By default, the process terminated at the first error.
+    status_text : str, optional
+        Text for download status, by default 'URLs list download:'.
     mute : boolean, optional
         If mute is True then progress messages will be disabled, default False
 
@@ -164,15 +166,21 @@ def read_urls_contents(urls_list, max_workers=10, session=None, parser=None, enc
         parser = str
     
     if max_retries is not None:
-        session.mount('http://', requests.HTTPAdapter(max_retries=max_retries))
-        session.mount('https://', requests.HTTPAdapter(max_retries=max_retries))
+        session.mount('http://', requests.adapters.HTTPAdapter(max_retries=max_retries))
+        session.mount('https://', requests.adapters.HTTPAdapter(max_retries=max_retries))
+
+    if status_text is None:
+        status_text = 'URLs list download:'
+
+    if not mute:
+        print(f"{status_text}     0%"+" "*50, end='\r', flush=True)
 
     buf = io.StringIO()
     with pool.ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_load_csv = {executor.submit(url_loader, url, session, timeout, encoding): url for url in urls_list}
         for i, future in enumerate(pool.as_completed(future_load_csv)):
             if not mute:
-                print(f"URLs list download: {PROGRESS_WHEEL[i%8]} {i/len(urls_list)*.995:<50.0%}",end='\r',flush=True)
+                print(f"{status_text} {PROGRESS_WHEEL[i%8]} {i/len(urls_list)*.995:.0%}"+" "*50, end='\r', flush=True)
             url = future_load_csv[future]
             try:
                 buf.write(parser(future.result()))
@@ -180,10 +188,13 @@ def read_urls_contents(urls_list, max_workers=10, session=None, parser=None, enc
                 if error_page_output is None:
                     raise Exception(f'Download error:\n{url}|{exc}')
                 else:
-                    error_page_output.write(f'Download error:\n{url}|{exc}')
-    buf.seek(0)
+                    error_page_output.write(f'Download error:\n{url}|{exc}\n')
+
     if not mute:
-        print("URLs list download:   100%")
+        print(f"{status_text}   100%"+" "*50)
+
+    buf.seek(0)
+
     return buf
 
 

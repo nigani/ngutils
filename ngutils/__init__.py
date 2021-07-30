@@ -1,6 +1,6 @@
 from ngutils.functions import *
 
-__version__ = '0.9.7'
+__version__ = '0.9.8'
 
 __all__ = [
     'accel_steps',
