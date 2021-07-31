@@ -49,7 +49,7 @@ def view_types(data, dropna=True):
         print(df_output.head(60))
     print("{} rows x {} columns".format(*data.shape))
 
-def phrase_build(number, noun_forms=None, prefix_forms=None, grouping_symbol='`'):
+def build_phrase(number, noun_forms=None, prefix_forms=None, grouping_symbol='`'):
     """
     Build correct phrase [prefix word] [number] [noun] in Russian.
 
@@ -81,16 +81,16 @@ def phrase_build(number, noun_forms=None, prefix_forms=None, grouping_symbol='`'
 
     Examples
     -------
-    >>> phrase_build(42)
+    >>> build_phrase(42)
     Опубликованы 42 новости
 
-    >>> phrase_build(15, ['сияющих звезд', 'сияющая звезда', 'сияющие звезды'], False)
+    >>> build_phrase(15, ['сияющих звезд', 'сияющая звезда', 'сияющие звезды'], False)
     15 сияющих звезд
 
-    >>> phrase_build(31, ['китов', 'кит', 'кита'], ['Спасены', 'Спасен'])
+    >>> build_phrase(31, ['китов', 'кит', 'кита'], ['Спасены', 'Спасен'])
     Спасен 31 кит
 
-    2021-07-26 (c) Nikolay Ganibaev
+    2021-07-31 (c) Nikolay Ganibaev
     """
 
     if prefix_forms is None:
