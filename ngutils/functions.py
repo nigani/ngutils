@@ -49,69 +49,6 @@ def view_types(data, dropna=True):
         print(df_output.head(60))
     print("{} rows x {} columns".format(*data.shape))
 
-def build_phrase(number, noun_forms=None, prefix_forms=None, grouping_symbol='`'):
-    """
-    Build correct phrase [prefix word] [number] [noun] in Russian.
-
-    Построение фразы [вводное слово] [число] [существительное] с правильными склонениями.
-    Для чисел, заканчивающихся на 11..14, 0, 5..9 используется форма склонения noun_forms[0].
-    Для других чисел, заканчивающихся на 1 используется форма склонения noun_forms[1].
-    Для других чисел, заканчивающихся на 2..4 используется форма склонения noun_forms[2].
-    При вызове функции может быть указано вводное слово в списке pre.
-    Для вводного слова используется страдательное причастие в множественном числе - prefix[0],
-        единственном числе - prefix[1].
-    По умолчанию в качестве примера используется фраза ["Опубликованы"] [number] ["новостей"]
-
-    Parameters
-    ----------
-    number : int
-        Number
-    noun_forms : list
-        Declensions of noun
-    prefix_forms : list
-        Declensions of prefix word, mute if False
-    grouping_symbol : str
-        Digit grouping symbol
-
-    Returns
-    -------
-    str
-        Phrase with correct declensions [prefix word] [number] [noun]. 
-        The digit grouping symbol is applied to the number.
-
-    Examples
-    -------
-    >>> build_phrase(42)
-    Опубликованы 42 новости
-
-    >>> build_phrase(15, ['сияющих звезд', 'сияющая звезда', 'сияющие звезды'], False)
-    15 сияющих звезд
-
-    >>> build_phrase(31, ['китов', 'кит', 'кита'], ['Спасены', 'Спасен'])
-    Спасен 31 кит
-
-    2021-07-31 (c) Nikolay Ganibaev
-    """
-
-    if prefix_forms is None:
-        prefix_forms = ['Опубликованы', 'Опубликована']
-    elif prefix_forms == False:
-        prefix_forms = ['','']
-
-    if noun_forms is None:
-        noun_forms = ['новостей', 'новость', 'новости']
-
-    n = f'{number:,}'.replace(',', grouping_symbol)
-    form_prefix = 0
-    form_noun = 2
-    if (n[-1] == '0') or (n[-1] > '4') or ((len(n) > 1) and (n[-2] == '1')):
-        form_noun = 0
-    elif n[-1] == '1':
-        form_prefix = 1
-        form_noun = 1
-
-    return f'{prefix_forms[form_prefix]} {n} {noun_forms[form_noun]}'.strip()
-
 
 def read_urls_contents(urls_list, max_workers=10, session=None, parser=None, encoding=None, *, 
     max_retries=None, timeout=None, error_page_output=None, status_text=None, mute=False):
