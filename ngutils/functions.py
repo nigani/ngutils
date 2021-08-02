@@ -1,8 +1,12 @@
 import concurrent.futures as pool
 from datetime import date, datetime, timedelta
+from html import unescape
 import io
+from lxml.html.clean import Cleaner
 import pandas as pd
+import re
 import requests
+from unicodedata import normalize
 
 def view_types(data, dropna=True):
     """
@@ -176,3 +180,34 @@ def tune_steps(number=100):
         number -= number//2
         yield number
     yield 1
+
+clean_rules = Cleaner(
+    scripts = True,
+    javascript = True,
+    comments = True,
+    style = True,
+    links = True,
+    meta = True,
+    page_structure = False,
+    processing_instructions = True,
+    embedded = True,
+    frames = True,
+    forms = True,
+    annoying_tags = True,
+    remove_tags = ['abbr', 'acronym', 'b', 'big', 'blockquote', 'cite', 'code', 'del', 'dfn', 'em', 'i', 'ins', 
+                   'kbd', 's', 'samp', 'small', 'span', 'strike', 'strong', 'sub', 'sup', 'tt', 'u', 'var', ],
+    kill_tags = ['figure', 'footer', 'header', 'img', 'svg', 'template'],
+    remove_unknown_tags = False,
+    safe_attrs_only = True,
+    add_nofollow = False,
+)
+
+def reduce_content(text_content):
+    """
+    Normalize, cleaning and reducing unicode html content
+    """
+    text_content = clean_rules.clean_html(text_content) # cleaning html
+    text_content = normalize('NFKC', text_content) # normalize unicode text
+    text_content = unescape(text_content) # change the html-codes to unicode characters
+    text_content = re.sub('\s+', ' ', text_content).strip() # reduce the whitespace
+    return text_content
