@@ -315,3 +315,15 @@ def read_files_contents(
     if output_type is not None:
         buf.seek(0)
         return buf
+
+def flatten(unflat: list) -> list:
+    '''
+    Flatten list
+    '''
+    flat = []
+    for root in unflat:
+        if isinstance(root, list):
+            flat.extend(unpack(root))
+        else:
+            flat.append(root)
+    return flat
