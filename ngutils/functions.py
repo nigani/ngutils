@@ -1,27 +1,31 @@
+# functions for ngutils
+
 import concurrent.futures as pool
-from datetime import date, datetime, timedelta
+from hashlib import blake2b
 from html import unescape
 import io
 from lxml.html.clean import Cleaner
 import pandas as pd
 import re
 import requests
+import shutil
+from tqdm import tqdm
+from typing import Union, Optional, Callable
 from unicodedata import normalize
 
-def view_types(data, dropna=True):
+def view_types(data: Union[pd.DataFrame, pd.Series, list, dict], dropna: Optional[bool] = True) -> None:
     """
     Вывод отчета с анализом содержимого объекта data, подсчет представленных типов данных
+    
     Parameters
     ----------
-    data : DataFrame, Series, dict, list, другой тип, преобразуемый к DataFrame
+    data : DataFrame, Series, dict, list
         Объект DataFrame или приводимый к DataFrame для анализа
     dropna : bool, default True
         Не включать NaN в расчет количества уникальных значений
     Returns
     -------
     None
-    
-    2021-07-26 (c) Nikolay Ganibaev
     """
     data = pd.DataFrame(data)
     columns_exch = {
@@ -54,11 +58,15 @@ def view_types(data, dropna=True):
     print("{} rows x {} columns".format(*data.shape))
 
 
-def read_urls_contents(urls_list, max_workers=10, session=None, parser=None, encoding=None, *, 
-    max_retries=None, timeout=None, error_page_output=None, status_text=None, mute=False):
+def read_urls_contents(
+    urls_list: list, max_workers: int =10, session: Optional[requests.Session] = None, 
+    parser: Optional[Callable] = None, encoding: Optional[str] = None, *, 
+    max_retries: Optional[int] = None, timeout : Union[float, tuple, None] = None, 
+    error_page_output: Optional[io.StringIO] = None, status_text: Optional[str] = None, 
+    mute: Optional[bool] = False) -> io.StringIO:
     """
     URLs list contents multithread loading to StringIO
-
+    
     Parameters
     ----------
     urls_list : list
@@ -69,7 +77,7 @@ def read_urls_contents(urls_list, max_workers=10, session=None, parser=None, enc
         Auth session.
     parser : function, optional
         Function for content preprocessing in main thread.
-    encoding : string, optional
+    encoding : str, optional
         Encoding of the content. By default, the content encoding is determined automatically.
     max_retries : int, optional
         The maximum number of retries for connection. By default, failed connections are not retry.
@@ -86,12 +94,11 @@ def read_urls_contents(urls_list, max_workers=10, session=None, parser=None, enc
     -------
     io.StringIO
         String stream for additional processing or use in pd.read_csv
-
-    2021-07-26 (c) Nikolay Ganibaev
     """
     PROGRESS_WHEEL=r'|/—\|/—\ '
 
-    def url_loader(url, session, timeout, encoding):
+    def url_loader(url: str, session: Optional[requests.Session], timeout: Optional[float], 
+                   encoding: Optional[str]) -> str:
         """
         Default function for url download
         """
@@ -103,15 +110,12 @@ def read_urls_contents(urls_list, max_workers=10, session=None, parser=None, enc
     if session is None:
         session = requests.Session()
 
-    if parser is None:
-        parser = str
-    
     if max_retries is not None:
         session.mount('http://', requests.adapters.HTTPAdapter(max_retries=max_retries))
         session.mount('https://', requests.adapters.HTTPAdapter(max_retries=max_retries))
 
     if status_text is None:
-        status_text = 'URLs list download:'
+        status_text = 'URLs download:'
 
     if not mute:
         print(f"{status_text}     0%"+" "*50, end='\r', flush=True)
@@ -124,12 +128,12 @@ def read_urls_contents(urls_list, max_workers=10, session=None, parser=None, enc
                 print(f"{status_text} {PROGRESS_WHEEL[i%8]} {i/len(urls_list)*.995:.0%}"+" "*50, end='\r', flush=True)
             url = future_load_csv[future]
             try:
-                buf.write(parser(future.result()))
+                buf.write(future.result() if parser is None else parser(future.result()))
             except Exception as exc:
                 if error_page_output is None:
-                    raise Exception(f'Download error:\n{url}|{exc}')
+                    raise Exception(f'Download error\n{url}|{exc}')
                 else:
-                    error_page_output.write(f'Download error:\n{url}|{exc}\n')
+                    error_page_output.write(f'Download error\n{url}|{exc}\n')
 
     if not mute:
         print(f"{status_text}   100%"+" "*50)
@@ -139,7 +143,7 @@ def read_urls_contents(urls_list, max_workers=10, session=None, parser=None, enc
     return buf
 
 
-def accel_steps(max_degree=10):
+def accel_steps(max_degree: Optional[int] = 10):
     """
     Increment yield-counter with acceleration
 
@@ -152,15 +156,13 @@ def accel_steps(max_degree=10):
     -------
     int
         counter value
-
-    2021-07-29 (c) Nikolay Ganibaev
     """
     for i in range(int(max_degree)):
         for j in 1, 2, 5:
             yield j*10**i
 
 
-def tune_steps(number=100):
+def tune_steps(number: Optional[int] = 100):
     """
     Decrement yield-counter fast decrement counter for binary search from [1..number]
 
@@ -173,8 +175,6 @@ def tune_steps(number=100):
     -------
     int
         counter value
-
-    2021-07-29 (c) Nikolay Ganibaev
     """
     while number>1:
         number -= number//2
@@ -202,7 +202,18 @@ clean_rules = Cleaner(
     add_nofollow = False,
 )
 
-def reduce_content(text_content):
+
+def hash_hd(something, digest_size=20) -> str:
+    """
+    Return hash of something
+    """
+    if isinstance(something, bytes):
+        return blake2b(something, digest_size=digest_size).hexdigest()
+    else:
+        return blake2b(str(text).encode(), digest_size=digest_size).hexdigest()
+
+
+def reduce_content(text_content: str) -> str:
     """
     Normalize, cleaning and reducing unicode html content
     """
@@ -211,3 +222,96 @@ def reduce_content(text_content):
     text_content = unescape(text_content) # change the html-codes to unicode characters
     text_content = re.sub('\s+', ' ', text_content).strip() # reduce the whitespace
     return text_content
+
+
+def read_files_contents(
+    files_list: list, max_workers: int =10,
+    parser: Optional[Callable] = None, encoding: Optional[str] = 'utf-8', *, 
+    error_page_output: Optional[io.StringIO] = None, status_text: Optional[str] = None, 
+    output_type: Optional[str] = None, 
+    mute: Optional[bool] = False) -> io.BufferedIOBase:
+    """
+    Files contents multithreaded reading to StringIO or BytesIO
+
+    Parameters
+    ----------
+    urls_list : list
+        Iterable list of files.
+    max_workers : int, optional
+        The maximum number of threads, by default 10.
+    parser : function, optional
+        Function for content preprocessing in main thread.
+    encoding : string, optional
+        Encoding of the content. By default, the content encoding is determined automatically.
+    error_page_output : io.StringIO, optional
+        StringIO output stream for all runtime errors. By default, the process terminated at the first error.
+    status_text : str, optional
+        Text for download status, by default 'URLs list download:'.
+    output_type : str, optional
+        'StringIO' or 'BytesIO'. By default 'StringIO'
+    mute : boolean, optional
+        If mute is True then progress messages will be disabled, default False
+
+    Returns
+    -------
+    io.StringIO or io.BytesIO
+        String stream for additional processing or use in pd.read_csv
+    """
+    PROGRESS_WHEEL=r'|/—\|/—\ '
+
+    def file_reader(file, output_type, encoding):
+        """
+        Default function for read the file
+        """
+        b_content = io.BytesIO()
+        with open(file,'rb') as f:
+            shutil.copyfileobj(f, b_content)
+            if output_type=='BytesIO':
+                return b_content.getvalue()
+            else:
+                return b_content.getvalue().decode(encoding=encoding)
+
+    if mute == 'tqdm':
+        it = tqdm
+    else:
+        def it(fn, total): return fn
+        
+    if status_text is None:
+        status_text = 'Files download:'
+
+    if output_type == 'StringIO':
+        buf = io.StringIO()
+    elif output_type == 'BytesIO':
+        buf = io.BytesIO()
+    else:
+        output_type = None
+
+    if (output_type is None) and (parser is None):
+        raise Exception("There can't be an undefined `output_type` and `parser` together")
+        
+    if mute == False:
+        print(f"{status_text}     0%"+" "*50, end='\r', flush=True)
+
+    with pool.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_read_files = {executor.submit(file_reader, file, output_type, encoding): file for file in files_list}
+        for i, future in it(enumerate(pool.as_completed(future_read_files)), total=len(files_list)):
+            if mute == False:
+                print(f"{status_text} {PROGRESS_WHEEL[i%8]} {i/len(files_list)*.995:.0%}"+" "*50, end='\r', flush=True)
+            file = future_read_files[future]
+            try:
+                if output_type is None:
+                    parser(future.result(), file)
+                else:
+                    buf.write(future.result() if parser is None else parser(future.result(), file))
+            except Exception as exc:
+                if error_page_output is None:
+                    raise Exception(f'Read files error\n{file}|{exc}')
+                else:
+                    error_page_output.write(f'Read files error\n{file}|{exc}\n')
+
+    if mute == False:
+        print(f"{status_text}   100%"+" "*50)
+
+    if output_type is not None:
+        buf.seek(0)
+        return buf
