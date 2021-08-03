@@ -210,7 +210,7 @@ def hash_hd(something, digest_size=20) -> str:
     if isinstance(something, bytes):
         return blake2b(something, digest_size=digest_size).hexdigest()
     else:
-        return blake2b(str(text).encode(), digest_size=digest_size).hexdigest()
+        return blake2b(str(something).encode(), digest_size=digest_size).hexdigest()
 
 
 def reduce_content(text_content: str) -> str:
@@ -323,7 +323,7 @@ def flatten(unflat: list) -> list:
     flat = []
     for root in unflat:
         if isinstance(root, list):
-            flat.extend(unpack(root))
+            flat.extend(flatten(root))
         else:
             flat.append(root)
     return flat
