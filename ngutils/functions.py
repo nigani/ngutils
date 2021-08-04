@@ -327,3 +327,20 @@ def flatten(unflat: list) -> list:
         else:
             flat.append(root)
     return flat
+
+def json_to_list(unflat: dict) -> list:
+    '''
+    Flatten dict
+    '''
+    json_list = []
+    def parse(val, path):
+        if isinstance(val, dict):
+            for x in val:
+                parse(val[x], f"{path}.{x}")
+        elif isinstance(val, list):
+            for i, x in enumerate(val):
+                parse(x, f"{path}[{i}]")
+        else:
+            json_list.append([path[1:], val])
+    parse(root, '')
+    return json_list
