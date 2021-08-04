@@ -63,6 +63,7 @@ def read_urls_contents(
     parser: Optional[Callable] = None, encoding: Optional[str] = None, *, 
     max_retries: Optional[int] = None, timeout : Union[float, tuple, None] = None, 
     error_page_output: Optional[io.StringIO] = None, status_text: Optional[str] = None, 
+    output_type: Optional[str] = None, 
     mute: Optional[bool] = False) -> io.StringIO:
     """
     URLs list contents multithread loading to StringIO
@@ -97,7 +98,7 @@ def read_urls_contents(
     """
     PROGRESS_WHEEL=r'|/—\|/—\ '
 
-    def url_loader(url: str, session: Optional[requests.Session], timeout: Optional[float], 
+    def url_loader(url: str, session: Optional[requests.Session], timeout: Optional[float], output_type,
                    encoding: Optional[str]) -> str:
         """
         Default function for url download
@@ -107,6 +108,11 @@ def read_urls_contents(
         else:
             return session.get(url, timeout=timeout).content.decode(encoding)
 
+    if mute == 'tqdm':
+        it = tqdm
+    else:
+        def it(fn, total): return fn
+        
     if session is None:
         session = requests.Session()
 
@@ -117,30 +123,42 @@ def read_urls_contents(
     if status_text is None:
         status_text = 'URLs download:'
 
-    if not mute:
+    if output_type == 'StringIO':
+        buf = io.StringIO()
+    elif output_type == 'BytesIO':
+        buf = io.BytesIO()
+    else:
+        output_type = None
+
+    if (output_type is None) and (parser is None):
+        raise Exception("There can't be an undefined `output_type` and `parser` together")
+        
+    if mute == False:
         print(f"{status_text}     0%"+" "*50, end='\r', flush=True)
 
-    buf = io.StringIO()
     with pool.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_load_csv = {executor.submit(url_loader, url, session, timeout, encoding): url for url in urls_list}
-        for i, future in enumerate(pool.as_completed(future_load_csv)):
-            if not mute:
+        future_load_url = {executor.submit(url_loader, url, session, timeout, output_type, encoding): url for url in urls_list}
+        for i, future in it(enumerate(pool.as_completed(future_load_url)), total=len(urls_list)):
+            if mute == False:
                 print(f"{status_text} {PROGRESS_WHEEL[i%8]} {i/len(urls_list)*.995:.0%}"+" "*50, end='\r', flush=True)
-            url = future_load_csv[future]
+            url = future_load_url[future]
             try:
-                buf.write(future.result() if parser is None else parser(future.result()))
+                if output_type is None:
+                    parser(future.result(), url)
+                else:
+                    buf.write(future.result() if parser is None else parser(future.result(), url))
             except Exception as exc:
                 if error_page_output is None:
                     raise Exception(f'Download error\n{url}|{exc}')
                 else:
                     error_page_output.write(f'Download error\n{url}|{exc}\n')
 
-    if not mute:
+    if mute == False:
         print(f"{status_text}   100%"+" "*50)
 
-    buf.seek(0)
-
-    return buf
+    if output_type is not None:
+        buf.seek(0)
+        return buf
 
 
 def accel_steps(max_degree: Optional[int] = 10):
@@ -229,7 +247,7 @@ def read_files_contents(
     parser: Optional[Callable] = None, encoding: Optional[str] = 'utf-8', *, 
     error_page_output: Optional[io.StringIO] = None, status_text: Optional[str] = None, 
     output_type: Optional[str] = None, 
-    mute: Optional[bool] = False) -> io.BufferedIOBase:
+    mute: Union[bool, str] = False) -> io.BufferedIOBase:
     """
     Files contents multithreaded reading to StringIO or BytesIO
 
@@ -259,12 +277,12 @@ def read_files_contents(
     """
     PROGRESS_WHEEL=r'|/—\|/—\ '
 
-    def file_reader(file, output_type, encoding):
+    def file_reader(filepath, output_type, encoding):
         """
         Default function for read the file
         """
         b_content = io.BytesIO()
-        with open(file,'rb') as f:
+        with open(filepath,'rb') as f:
             shutil.copyfileobj(f, b_content)
             if output_type=='BytesIO':
                 return b_content.getvalue()
@@ -293,21 +311,21 @@ def read_files_contents(
         print(f"{status_text}     0%"+" "*50, end='\r', flush=True)
 
     with pool.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_read_files = {executor.submit(file_reader, file, output_type, encoding): file for file in files_list}
+        future_read_files = {executor.submit(file_reader, filepath, output_type, encoding): filepath for filepath in files_list}
         for i, future in it(enumerate(pool.as_completed(future_read_files)), total=len(files_list)):
             if mute == False:
                 print(f"{status_text} {PROGRESS_WHEEL[i%8]} {i/len(files_list)*.995:.0%}"+" "*50, end='\r', flush=True)
-            file = future_read_files[future]
+            filepath = future_read_files[future]
             try:
                 if output_type is None:
-                    parser(future.result(), file)
+                    parser(future.result(), filepath)
                 else:
-                    buf.write(future.result() if parser is None else parser(future.result(), file))
+                    buf.write(future.result() if parser is None else parser(future.result(), filepath))
             except Exception as exc:
                 if error_page_output is None:
-                    raise Exception(f'Read files error\n{file}|{exc}')
+                    raise Exception(f'Read files error\n{filepath}|{exc}')
                 else:
-                    error_page_output.write(f'Read files error\n{file}|{exc}\n')
+                    error_page_output.write(f'Read files error\n{filepath}|{exc}\n')
 
     if mute == False:
         print(f"{status_text}   100%"+" "*50)
@@ -339,8 +357,11 @@ def json_to_list(unflat: dict) -> list:
                 parse(val[x], f"{path}.{x}")
         elif isinstance(val, list):
             for i, x in enumerate(val):
-                parse(x, f"{path}[{i}]")
+                if i==0:
+                    parse(x, f"{path}")
+                else:
+                    parse(x, f"{path}[{i}]")
         else:
             json_list.append([path[1:], val])
-    parse(root, '')
+    parse(unflat, '')
     return json_list
