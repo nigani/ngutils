@@ -52,7 +52,7 @@ def view_types(data: Union[pd.DataFrame, pd.Series, list, dict], dropna: Optiona
 
     df_output['(unique)'] = [data[c].astype(str).nunique(dropna) for c in data.columns]
     df_output.columns = [columns_exch.get(str(x), x) for x in df_output.columns]
-    if sys.argv[-1].endswith('json'):
+    if jupiter_detected():
         display(df_output.head(60))
     else:
         print(df_output.head(60))
@@ -367,3 +367,8 @@ def json_to_list(unflat: dict) -> list:
             json_list.append([path[1:], val])
     parse(unflat, '')
     return json_list
+
+
+def jupiter_detected() -> bool:
+    return sys.argv[-1].endswith('json')
+
