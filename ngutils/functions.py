@@ -78,7 +78,7 @@ def read_urls_contents(
     session : requests.Session, optional
         Auth session.
     parser : function, optional
-        Function for content preprocessing in main thread.
+        Function for content preprocessing in main thread f(decoded_content: str, final_url: str) -> None.
     encoding : str, optional
         Encoding of the content. By default, the content encoding is determined automatically.
     max_retries : int, optional
@@ -104,10 +104,11 @@ def read_urls_contents(
         """
         Default function for url download
         """
+        r = session.get(url, timeout=timeout)
         if encoding is None:
-            return session.get(url, timeout=timeout).text
+            return r.text, r.url
         else:
-            return session.get(url, timeout=timeout).content.decode(encoding)
+            return r.content.decode(encoding), r.url
 
     if mute == 'tqdm':
         it = tqdm
@@ -145,9 +146,9 @@ def read_urls_contents(
             url = future_load_url[future]
             try:
                 if output_type is None:
-                    parser(future.result(), url)
+                    parser(*future.result())
                 else:
-                    buf.write(future.result() if parser is None else parser(future.result(), url))
+                    buf.write(future.result()[0] if parser is None else parser(*future.result()))
             except Exception as exc:
                 if error_page_output is None:
                     raise Exception(f'Download error\n{url}|{exc}')
