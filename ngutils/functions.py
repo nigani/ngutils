@@ -215,8 +215,8 @@ clean_rules = Cleaner(
     forms = True,
     annoying_tags = True,
     remove_tags = ['abbr', 'acronym', 'b', 'big', 'blockquote', 'cite', 'code', 'del', 'dfn', 'em', 'i', 'ins', 
-                   'kbd', 's', 'samp', 'small', 'span', 'strike', 'strong', 'sub', 'sup', 'tt', 'u', 'var', ],
-    kill_tags = ['figure', 'footer', 'header', 'img', 'svg', 'template'],
+                   'kbd', 's', 'samp', 'small', 'strike', 'strong', 'sub', 'sup', 'tt', 'u', 'var', ],
+    kill_tags = ['figure', 'footer', 'img', 'svg', 'template'],
     remove_unknown_tags = False,
     safe_attrs_only = True,
     add_nofollow = False,
@@ -372,3 +372,7 @@ def json_to_list(unflat: dict) -> list:
 def jupiter_detected() -> bool:
     return sys.argv[-1].endswith('json')
 
+def host_extract(url: str) -> str:
+    return url.replace('//www.', '//').replace('https://', '').replace('http://', '').partition('/')[0]
+    # return u.removeprefix('https://').removeprefix('http://').removeprefix('www.').partition('/')[0]
+    #          ^ new in python 3.9
