@@ -376,3 +376,17 @@ def host_extract(url: str) -> str:
     return url.replace('//www.', '//').replace('https://', '').replace('http://', '').partition('/')[0]
     # return u.removeprefix('https://').removeprefix('http://').removeprefix('www.').partition('/')[0]
     #          ^ new in python 3.9
+
+def text_beautifier(text: Union[str, list]) -> str:
+    """
+    Beautifier text in str or list str
+    """
+    if isinstance(text, list):
+        t_text = '&para;'.join(text) # группируем абзацы в строку
+    else:
+        t_text = text
+    t_text = re.sub('</?[a-z][^<>]*(>|$)', ' ', t_text) # удаляем все оставшиеся теги, оставляя содержание
+    t_text = re.sub('\s+', ' ', t_text).strip() # сжимаем пробелы и удаляем пробелы на границах текста
+    t_text = re.sub('&para;', '\r', t_text) # восстанавливаем абзацы
+
+    return(t_text)

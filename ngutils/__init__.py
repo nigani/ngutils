@@ -1,6 +1,6 @@
 from ngutils.functions import *
 
-__version__ = '0.9.21'
+__version__ = '0.9.22'
 
 __all__ = [
     'accel_steps',
@@ -12,6 +12,7 @@ __all__ = [
     'read_files_contents',
     'read_urls_contents',
     'reduce_content',
+    'text_beautifier',
     'tune_steps',
     'view_types',
 ]
