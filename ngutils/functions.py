@@ -427,5 +427,5 @@ def datetime_parse(text: str) -> datetime:
         text = text.replace('+', '-')
     elif ('UTC-' in text) or ('GMT-' in text):
         text = text.replace('-', '+')
-    return parse(text)
+    return parse(text, dayfirst=True)
 
