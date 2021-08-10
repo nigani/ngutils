@@ -1,18 +1,20 @@
 # functions for ngutils
 
 import concurrent.futures as pool
-from hashlib import blake2b
-from html import unescape
+from   datetime import datetime
+from   dateutil.parser import parse
+from   hashlib import blake2b
+from   html import unescape
 import io
-from lxml.html.clean import Cleaner
+from   lxml.html.clean import Cleaner
 import pandas as pd
 import re
 import requests
 import shutil
 import sys
-from tqdm import tqdm
-from typing import Union, Optional, Callable
-from unicodedata import normalize
+from   tqdm import tqdm
+from   typing import Union, Optional, Callable
+from   unicodedata import normalize
 
 def view_types(data: Union[pd.DataFrame, pd.Series, list, dict], dropna: Optional[bool] = True) -> None:
     """
@@ -207,18 +209,23 @@ clean_rules = Cleaner(
     comments = True,
     style = True,
     links = True,
-    meta = True,
+    meta = False,
     page_structure = False,
     processing_instructions = True,
     embedded = True,
     frames = True,
     forms = True,
     annoying_tags = True,
-    remove_tags = ['abbr', 'acronym', 'b', 'big', 'blockquote', 'cite', 'code', 'del', 'dfn', 'em', 'i', 'ins', 
-                   'kbd', 's', 'samp', 'small', 'strike', 'strong', 'sub', 'sup', 'tt', 'u', 'var', ],
-    kill_tags = ['figure', 'footer', 'img', 'svg', 'template'],
+    remove_tags = frozenset(['abbr', 'acronym', 'b', 'big', 'blockquote', 'cite', 'code', 'del', 'dfn', 'em', 'i', 'ins', 
+                   'kbd', 's', 'samp', 'small', 'strike', 'strong', 'sub', 'sup', 'tt', 'u', 'var', ]),
+    kill_tags = frozenset(['figure', 'footer', 'img', 'svg', 'template']),
     remove_unknown_tags = False,
     safe_attrs_only = True,
+    safe_attrs = frozenset(['alt', 'charset', 'cite', 'class', 'content', 'datetime', 'dir', 'disabled', 'enctype', 'for', 'frame', 
+                            'headers', 'href', 'hreflang', 'id', 'itemprop', 'label', 'lang', 'longdesc', 'media', 'method', 
+                            'multiple', 'name', 'nohref', 'noshade', 'nowrap', 'prompt', 'property', 'readonly', 'rel', 'rev', 
+                            'rows', 'rowspan', 'rules', 'scope', 'selected', 'shape', 'span', 'start', 'summary', 
+                            'tabindex', 'target', 'title', 'type', 'usemap', 'value']),
     add_nofollow = False,
 )
 
@@ -240,7 +247,22 @@ def reduce_content(text_content: str) -> str:
     text_content = clean_rules.clean_html(text_content) # cleaning html
     text_content = normalize('NFKC', text_content) # normalize unicode text
     text_content = unescape(text_content) # change the html-codes to unicode characters
+    text_content = re.sub('<p>\s+</p>', ' ', text_content) # reduce blank paragraphs
     text_content = re.sub('\s+', ' ', text_content).strip() # reduce the whitespace
+    return text_content
+
+
+def meta_append(text_content: str, find: str, ins: str = '<meta itemprop="datePublished" content="$">') -> str:
+    """
+    Append metadata to html ahead </head>
+    For example:
+    >>> meta_append(text_content, '\\"CreatedOn\\":\\"([^\\]+)')
+    """
+    match = re.search(find, text_content, re.S)
+    if match:
+        i = text_content.find('</head>')
+        if i>=0:
+            text_content = f"{text_content[:i]}{ins.replace('$', match[1])}{text_content[i:]}"
     return text_content
 
 
@@ -336,6 +358,7 @@ def read_files_contents(
         buf.seek(0)
         return buf
 
+
 def flatten(unflat: list) -> list:
     '''
     Flatten list
@@ -347,6 +370,7 @@ def flatten(unflat: list) -> list:
         else:
             flat.append(root)
     return flat
+
 
 def json_to_list(unflat: dict) -> list:
     '''
@@ -372,21 +396,36 @@ def json_to_list(unflat: dict) -> list:
 def jupiter_detected() -> bool:
     return sys.argv[-1].endswith('json')
 
+
 def host_extract(url: str) -> str:
     return url.replace('//www.', '//').replace('https://', '').replace('http://', '').partition('/')[0]
     # return u.removeprefix('https://').removeprefix('http://').removeprefix('www.').partition('/')[0]
     #          ^ new in python 3.9
+
 
 def text_beautifier(text: Union[str, list]) -> str:
     """
     Beautifier text in str or list str
     """
     if isinstance(text, list):
-        t_text = '&para;'.join(text) # группируем абзацы в строку
-    else:
-        t_text = text
-    t_text = re.sub('</?[a-z][^<>]*(>|$)', ' ', t_text) # удаляем все оставшиеся теги, оставляя содержание
-    t_text = re.sub('\s+', ' ', t_text).strip() # сжимаем пробелы и удаляем пробелы на границах текста
-    t_text = re.sub('&para;', '\r', t_text) # восстанавливаем абзацы
+        text = '&para;'.join(text) # группируем абзацы в строку
+    text = re.sub('\s*(?:&para;\s*)+&para;\s*', '&para;', text) # удаляем пустые строки
+    text = re.sub('</?[a-z][^<>]*(>|$)', ' ', text) # удаляем все оставшиеся теги, оставляя содержание
+    text = re.sub('\s+', ' ', text).strip() # сжимаем пробелы и удаляем пробелы на границах текста
+    text = text.replace('&para;', '\r') # восстанавливаем абзацы
+    text = text.replace(' .', '.').replace(' ,', ',').replace(' :', ':').replace(' ;', ';').replace(' ?', '?').replace(' !', '!')
+    return text
 
-    return(t_text)
+
+def datetime_parse(text: str) -> datetime:
+    """
+    Datetime parsing from str
+    Cancel timezone POSIX notation at dateutil.parse
+    """
+    text = text.upper()
+    if ('UTC+' in text) or ('GMT+' in text):
+        text = text.replace('+', '-')
+    elif ('UTC-' in text) or ('GMT-' in text):
+        text = text.replace('-', '+')
+    return parse(text)
+
