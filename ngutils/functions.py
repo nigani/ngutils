@@ -365,7 +365,7 @@ def flatten(unflat: list) -> list:
     '''
     flat = []
     for root in unflat:
-        if isinstance(root, list):
+        if isinstance(root, (list, tuple)):
             flat.extend(flatten(root))
         else:
             flat.append(root)
