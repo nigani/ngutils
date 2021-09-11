@@ -409,9 +409,9 @@ def text_beautifier(text: Union[str, list]) -> str:
     """
     if isinstance(text, list):
         text = '&para;'.join(text) # группируем абзацы в строку
-    text = re.sub('\s*(?:&para;\s*)+&para;\s*', '&para;', text) # удаляем пустые строки
     text = re.sub('</?[a-z][^<>]*(>|$)', ' ', text) # удаляем все оставшиеся теги, оставляя содержание
     text = re.sub('\s+', ' ', text).strip() # сжимаем пробелы и удаляем пробелы на границах текста
+    text = re.sub('\s*(?:&para;\s*)+&para;\s*', '&para;', text) # удаляем пустые строки
     text = text.replace('&para;', '\r') # восстанавливаем абзацы
     text = text.replace(' .', '.').replace(' ,', ',').replace(' :', ':').replace(' ;', ';').replace(' ?', '?').replace(' !', '!')
     return text
