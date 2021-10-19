@@ -16,7 +16,7 @@ from   tqdm import tqdm
 from   typing import Union, Optional, Callable
 from   unicodedata import normalize
 
-def view_types(data: Union[pd.DataFrame, pd.Series, list, dict], dropna: Optional[bool] = True) -> None:
+def view_types(data: Union[pd.DataFrame, pd.Series, list, dict], dropna: Optional[bool] = True, display_force: Optional[bool] = False) -> None:
     """
     Вывод отчета с анализом содержимого объекта data, подсчет представленных типов данных
     
@@ -54,7 +54,7 @@ def view_types(data: Union[pd.DataFrame, pd.Series, list, dict], dropna: Optiona
 
     df_output['(unique)'] = [data[c].astype(str).nunique(dropna) for c in data.columns]
     df_output.columns = [columns_exch.get(str(x), x) for x in df_output.columns]
-    if jupiter_detected():
+    if jupiter_detected() or display_force:
         display(df_output.head(60))
     else:
         print(df_output.head(60))
