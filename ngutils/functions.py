@@ -34,7 +34,7 @@ def view_types(data: Union[pd.DataFrame, pd.Series, list, dict], dropna: Optiona
     columns_exch = {
         "<class 'str'>": 'str', "<class 'int'>": 'int', "<class 'float'>": 'float',
         "<class 'list'>": 'list', "<class 'dict'>": 'dict',
-        "<class 'datetime.datetime'>": 'datetime',
+        "<class 'datetime.datetime'>": 'datetime', "<class 'datetime.date'>": 'date',
         "<class 'pandas._libs.tslibs.timestamps.Timestamp'>": 'Timestamp',
     }
     df_output = pd.DataFrame(
