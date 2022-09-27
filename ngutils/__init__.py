@@ -1,6 +1,6 @@
 from ngutils.functions import *
 
-__version__ = '0.9.29'
+__version__ = '0.10.1'
 
 __all__ = [
     'accel_steps',
@@ -17,5 +17,7 @@ __all__ = [
     'text_beautifier',
     'tune_steps',
     'view_types',
+    'Tc',
+    'Pcc',
 ]
 
